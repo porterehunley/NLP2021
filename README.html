@@ -1064,13 +1064,16 @@ body .markdown-body
 .highlight .il{color:#009999}
 .highlight .gc{color:#999;background-color:#EAF2F5}
 </style><title>README</title></head><body><article class="markdown-body"><h1 id="treatment-recomendations-from-open-source-clinical-trials">Treatment Recomendations from Open Source Clinical Trials<a class="headerlink" href="#treatment-recomendations-from-open-source-clinical-trials" title="Permanent link"></a></h1>
-<p>I propose an architecture and a basic implementation for treatment recomendations based on clinical trials data from <a href="https://clinicaltrials.gov">ClinicalTrials.gov</a>. The goal is present treatments for a condition, what symptoms they treat, and how effective they are at treating them.</p>
+<p>I propose an architecture and a basic implementation for treatment recomendations based on clinical trials data from <a href="https://clinicaltrials.gov">ClinicalTrials.gov</a>. The goal is present treatments for a condition, what symptoms they treat, and how effective they are at treating them. </p>
+<p>The motivation comes from the current opaqueness in medicine. There is only one treatment that people generally know the effectiveness of and it&rsquo;s COVID vaccines. However, all medicines have measures of effectiveness that are never presented.</p>
 <h2 id="the-data">The Data<a class="headerlink" href="#the-data" title="Permanent link"></a></h2>
 <p><a href="https://drive.google.com/drive/folders/1GQygB0HlN3wP7VDWmgjHDkVp4xxI5-vZ?usp=sharing">Link to Drive Folder Containing all Created Data</a></p>
 <p>All data comes from the ClinicalTrials.gov website. It is the largest repository of clinical trails in the U.S. and all clinical trials must be posted here by law.</p>
 <h3 id="structuring-a-clincal-trial">Structuring a Clincal Trial<a class="headerlink" href="#structuring-a-clincal-trial" title="Permanent link"></a></h3>
-<p>The data is a series of clinical trials where each trial is represented as a JSON blob. Working with the data was difficult due to the complexity of a clinical trial. Often times fields were 7 layers into the json strucutre. The best way to work with the data was to create a series of relational tables where each table housed part of clinical trail.</p>
+<p>The data is a series of clinical trials where each trial is represented as a JSON blob. The best way to work with the data was to create a series of relational tables where each table housed part of clinical trail. To understand this better an outline of a trial is given below.</p>
+<p>A trial consists of two main parts: groups and measures.</p>
 <p><img alt="Clinical Trial Structure" src="/Users/porterhunley/NLP2021/figures/ClinicalTrialStructure.png" /></p>
+<p>Working with the data was difficult due to the complexity of a clinical trial. Often times fields were 7 layers into the json strucutre. </p>
 <p>Not all clinical trials were collected. The clinical trials used were intervention trials with target conditions and posted results. This totaled to about 28 thousand studies out of the 300 thousand posted on the website.</p>
 <p><strong>Studies</strong></p>
 <ul>
@@ -1152,11 +1155,13 @@ body .markdown-body
 <p>The purpose of the analytics table is to combine group treatments and outcomes into rows that can be analyzed statistically. It was created first by combining the different group outcomes in a measurement to form a p-value from a students t-test. Then merging in the detecting treatments of a group. An example of the resulting row can be seen below:</p>
 <p><img alt="AnalyticsRows" src="/Users/porterhunley/NLP2021/figures/AnalyticsRows.png" /></p>
 <p>Notice the duplicate treatment groups. This is because some of the groups were the same treatment but different dosages. Another model would be necessary to extract the doses.</p>
+<h2 id="runtime">Runtime<a class="headerlink" href="#runtime" title="Permanent link"></a></h2>
+<p>Run on the analytics table created in pre-processing. The user inputs a treatment.</p>
 <h3 id="clinical-measures-clustering">Clinical Measures Clustering<a class="headerlink" href="#clinical-measures-clustering" title="Permanent link"></a></h3>
 <p>A medical condition has many symptoms and methods of detection. Rarely can you pin down a single treatment to cure an entire condition. The complexity of a condition is problematic for the system because a simpel p-value average of all the treatments doesn&rsquo;t make any sense. </p>
 <p>The solution is grouping the measurements and averaging treatments within the group. Clustering was agglomerative and done via cosine similarity. The measurement embeddings were created by SBERT(Sentence-BERT).</p>
 <h4 id="fine-tuning-sbert">Fine Tuning SBERT<a class="headerlink" href="#fine-tuning-sbert" title="Permanent link"></a></h4>
-<p>There were eight measurements chosen for evaluation representing three different measurements: nausea, pain, and intensity of hot flashes. They were chosen because they are all Gabapentin trials, and represent stark differences and similarities. The nausea and pain measures are nearly identical semantically, both using a Visual Analog Score, and hot-flash is very differeny from them both. By default, SBERT perceives almost no difference between different clinical measurments.</p>
+<p>There were eight measurements chosen for evaluation representing three different symptoms: nausea, pain, and intensity of hot flashes. They were chosen because they are all Gabapentin trials, and represent stark differences and similarities. The nausea and pain measures are nearly identical semantically, both using a Visual Analog Score, and hot-flash is very differeny from them both. By default, SBERT perceives almost no difference between different clinical measurments.</p>
 <p>To fine tune SBERT we give it pairs of sentences and a 0-1 score representing similarity. I used an interesting aspect of the data to automatically generate the labels. Primary measurments are directly tied to the subject matter of the trial. Since some the trials already have key-word headings, listed conditions, and treatments, we can use that meta-data to generate a score between different primary measurments. The score was a weighted average of the percentage of meta-data shared, with a floor of .85 given to the rare case of two or more primary measurements in the same study. A 60/40 split of high correlating (&gt;.7) and zero correlating measurement pairs were used. The abscence of middle pairs is because of lower confidence in the accuracy of the score away from the extremes. </p>
 <table>
 <thead>

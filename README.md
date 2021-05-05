@@ -1,6 +1,8 @@
 # Treatment Recomendations from Open Source Clinical Trials
 
-I propose an architecture and a basic implementation for treatment recomendations based on clinical trials data from [ClinicalTrials.gov](https://clinicaltrials.gov). The goal is present treatments for a condition, what symptoms they treat, and how effective they are at treating them.
+I propose an architecture and a basic implementation for treatment recomendations based on clinical trials data from [ClinicalTrials.gov](https://clinicaltrials.gov). The goal is present treatments for a condition, what symptoms they treat, and how effective they are at treating them. 
+
+The motivation comes from the current opaqueness in medicine. There is only one treatment that people generally know the effectiveness of and it's COVID vaccines. However, all medicines have measures of effectiveness that are never presented.
 
 ## The Data
 
@@ -9,9 +11,15 @@ I propose an architecture and a basic implementation for treatment recomendation
 All data comes from the ClinicalTrials.gov website. It is the largest repository of clinical trails in the U.S. and all clinical trials must be posted here by law.
 
 ### Structuring a Clincal Trial
-The data is a series of clinical trials where each trial is represented as a JSON blob. Working with the data was difficult due to the complexity of a clinical trial. Often times fields were 7 layers into the json strucutre. The best way to work with the data was to create a series of relational tables where each table housed part of clinical trail.
+
+The data is a series of clinical trials where each trial is represented as a JSON blob. The best way to work with the data was to create a series of relational tables where each table housed part of clinical trail. To understand this better an outline of a trial is given below.
+
+A trial consists of two main parts: groups and measures.
 
 ![Clinical Trial Structure](figures/ClinicalTrialStructure.png)
+
+Working with the data was difficult due to the complexity of a clinical trial. Often times fields were 7 layers into the json strucutre. 
+
 
 Not all clinical trials were collected. The clinical trials used were intervention trials with target conditions and posted results. This totaled to about 28 thousand studies out of the 300 thousand posted on the website.
 
@@ -93,7 +101,9 @@ The purpose of the analytics table is to combine group treatments and outcomes i
 
 Notice the duplicate treatment groups. This is because some of the groups were the same treatment but different dosages. Another model would be necessary to extract the doses.
 
+## Runtime
 
+Run on the analytics table created in pre-processing. The user inputs a treatment.
 
 ### Clinical Measures Clustering
 
@@ -103,7 +113,7 @@ The solution is grouping the measurements and averaging treatments within the gr
 
 #### Fine Tuning SBERT
 
-There were eight measurements chosen for evaluation representing three different measurements: nausea, pain, and intensity of hot flashes. They were chosen because they are all Gabapentin trials, and represent stark differences and similarities. The nausea and pain measures are nearly identical semantically, both using a Visual Analog Score, and hot-flash is very differeny from them both. By default, SBERT perceives almost no difference between different clinical measurments.
+There were eight measurements chosen for evaluation representing three different symptoms: nausea, pain, and intensity of hot flashes. They were chosen because they are all Gabapentin trials, and represent stark differences and similarities. The nausea and pain measures are nearly identical semantically, both using a Visual Analog Score, and hot-flash is very differeny from them both. By default, SBERT perceives almost no difference between different clinical measurments.
 
 To fine tune SBERT we give it pairs of sentences and a 0-1 score representing similarity. I used an interesting aspect of the data to automatically generate the labels. Primary measurments are directly tied to the subject matter of the trial. Since some the trials already have key-word headings, listed conditions, and treatments, we can use that meta-data to generate a score between different primary measurments. The score was a weighted average of the percentage of meta-data shared, with a floor of .85 given to the rare case of two or more primary measurements in the same study. A 60/40 split of high correlating (>.7) and zero correlating measurement pairs were used. The abscence of middle pairs is because of lower confidence in the accuracy of the score away from the extremes. 
 
